@@ -1,0 +1,14 @@
+
+# Gen folders
+/[Tt]emp/
+/[Ll]ogs/
+
+# Visual Studio cache directory
+.vs/
+.vscode/
+
+#cache
+__pycache__/
+ops/
+creds/
+
