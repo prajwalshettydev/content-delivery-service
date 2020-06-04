@@ -12,7 +12,7 @@ from google.auth.transport.requests import Request
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 # The ID and range of a sample spreadsheet.
-SPREADSHEET_ID = config.ContentSheet  # config.tweet_sheet
+#SPREADSHEET_ID = config.ContentSheet  # config.tweet_sheet
 SAMPLE_RANGE_NAME = 'Sheet1!A2:E3'
 
 
@@ -24,8 +24,8 @@ def authenticate_to_gsheet():  # -> googleapiclient.discovery.Resource:
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
+    if os.path.exists(config.token_pickle):
+        with open(config.token_pickle, 'rb') as token:
             creds = pickle.load(token)
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
@@ -33,10 +33,10 @@ def authenticate_to_gsheet():  # -> googleapiclient.discovery.Resource:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
+                config.sheet_credentials, SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
-        with open('token.pickle', 'wb') as token:
+        with open(config.token_pickle, 'wb') as token:
             pickle.dump(creds, token)
 
     return build('sheets', 'v4', credentials=creds)
@@ -63,7 +63,7 @@ def get_all_cells_from_sheet():
 
     # Call the Sheets API
     sheet = service.spreadsheets()
-    result = sheet.values().get(spreadsheetId=SPREADSHEET_ID,
+    result = sheet.values().get(spreadsheetId=config.ContentSheet,
                                 ).execute()  # range=SAMPLE_RANGE_NAME,
     pass
 
@@ -73,7 +73,7 @@ def get_particular_row_from_sheet(row_index: int):
 
     # Call the Sheets API
     sheet = service.spreadsheets()
-    result_sheet = sheet.get(spreadsheetId=SPREADSHEET_ID,
+    result_sheet = sheet.get(spreadsheetId=config.ContentSheet,
                              includeGridData=True).execute()
 
     data_sheet1 = result_sheet.get('sheets')[0]

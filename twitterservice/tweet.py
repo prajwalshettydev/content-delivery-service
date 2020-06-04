@@ -14,12 +14,13 @@ def init():
 
 api = init()
 
-# try:
-#     api.verify_credentials()
-#     print("Authentication OK")
-# except:
-#     print("Error during authentication")
-
+def check_twitter_auth():
+    print("Authenticating to twitter")
+    try:
+        api.verify_credentials()
+        print("Authentication OK")
+    except:
+        print("Error during authentication")
 
 def post_simple_tweet(tweet: str):
     # Create a tweet

@@ -5,11 +5,10 @@ import config
 import os
 
 def tick():
-    print("Main ticking")
     current_row = initial_row = 8 - 1
 
     main_tweet_data = gsheet.get_particular_row_from_sheet(current_row)
-
+    tweet.check_twitter_auth()
     pass
 
 
