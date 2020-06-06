@@ -1,42 +1,51 @@
 import os
 import sys
 import json
+import typing
 from datetime import timedelta, datetime
+from googleservice import gsheet
+from twitterservice import tweet
+from utils import sync_ops
 
+# file
 img_download_loc = 'ops/media'
 config_file_loc = 'creds/config.json'
+analytics_file_loc = 'creds/analytics.json'
 twitter_cred_loc = 'creds/twitterCred.json'
-log_loc = 'ops'
-str_datetime_format = r'%Y-%m-%dT%H:%M:%S.%fZ'
-
-# Twitter_Auth
-ConsumerAPIkey: str
-ConsumerAPIsecretKey: str
-AccessToken: str
-AccessTokenSecret: str
-
-# GSheet_Auth
 token_pickle = "creds/token.pickle"
 sheet_credentials = "creds/credentials.json"
+log_loc = 'ops'
+
+# GSheet
+content_sheet_id: str = '' 
+settings_sheet_id: str = ''
+settings_range: str = ''
+analytics_range: str = ''
+sheet_auth_scope: str = ''
 
 # Core
-CoreServiceName: str
-Version = (0, 0, 2)
-Refresh_time = 10  # seconds
-ContentSheet: str
-CurrentTweet: int
+core_service_name: str = ''
+version = (0, 1, 1)
+last_tweet_row_index: int = -1
+debug_mode = False
+str_datetime_format = r'%Y-%m-%dT%H:%M:%S.%fZ'
 
+# Time
 last_tweet_time: datetime = datetime.max
-refresh_time: timedelta = timedelta(
-    days=0, seconds=10, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0)
-timedelta_between_tweets: timedelta = timedelta(
-    days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=12, weeks=0)
+last_active_time: datetime = datetime.now()
+tick_frequency: timedelta = timedelta(seconds=10, minutes=0, hours=0)
+time_between_tweets: timedelta = timedelta(days=0, hours=12)
+
+if not debug_mode:
+    sys.stderr = open(os.path.join(log_loc, 'log_err.txt'), 'w', 1)
+    sys.stdout = open(os.path.join(log_loc, 'log_out.txt'), 'w', 1)
 
 
-sys.stderr = open(os.path.join(log_loc, 'log_err.txt'), 'w', 1)
-sys.stdout = open(os.path.join(log_loc, 'log_out.txt'), 'w', 1)
+def datetime_str(date_time: datetime):
+    return date_time.strftime(str_datetime_format)
 
-def LoadJsonFromFile(filepath: str):
+
+def load_json_from_file(filepath: str):
     """Loads json data from the file, Note: file should be a valid .json file
 
     Arguments:
@@ -53,29 +62,69 @@ def LoadJsonFromFile(filepath: str):
         return json.load(f)
 
 
+def save_json(json_data, filepath):
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.truncate(0)  # need '0' when using r+
+        json.dump(json_data, f, ensure_ascii=False, indent=4)
+
+
+def load_data_from_json(json_file_loc):
+    config = load_json_from_file(json_file_loc)
+    for k in config.keys():
+        if k in globals():
+            if type(globals()[k]) is datetime:
+                globals()[k] = datetime.strptime(config[k], str_datetime_format)
+            elif type(globals()[k]) is timedelta:
+                t = datetime.strptime(config[k], "%H:%M:%S")
+                globals()[k] = timedelta(hours=t.hour,
+                                         minutes=t.minute, seconds=t.second)
+            else:
+                globals()[k] = config[k]
+        # else:
+        #     print("Skipping: "+ k)
+
+
 def init():
-    global CurrentTweet, last_tweet_time, CoreServiceName, ContentSheet
+    load_data_from_json(config_file_loc)
+    load_data_from_json(analytics_file_loc)
 
-    inputData = LoadJsonFromFile(config_file_loc)
-
-    CurrentTweet = inputData["currentTweet"]
-    last_tweet_time = datetime.strptime(
-        inputData["lastTweetTime"], str_datetime_format)
-    CoreServiceName = inputData["coreSerivceName"]
-    ContentSheet = inputData["contentSheet"]
-
-    setup_twitter()
+    # setup
+    gsheet.init(token_pickle, sheet_credentials, sheet_auth_scope)
+    twitter_auth_data = load_json_from_file(twitter_cred_loc)
+    tweet.init(twitter_auth_data)
 
 
-def setup_twitter():
-    global ConsumerAPIkey, ConsumerAPIsecretKey, AccessToken, AccessTokenSecret
-    
-    inputData = LoadJsonFromFile(twitter_cred_loc)
-
-    ConsumerAPIkey = inputData["consumerAPIkey"]
-    ConsumerAPIsecretKey = inputData["consumerAPIsecretKey"]
-    AccessToken = inputData["accessToken"]
-    AccessTokenSecret = inputData["accessTokenSecret"]
+def sync():
+    print("\nSyncing Service Config with cloud..")
+    global last_active_time
+    last_active_time = datetime.now()
+    sync_analytics()
+    sync_settings()
 
 
-init()
+def sync_settings():
+    # get settings
+    resp: [[]] = gsheet.get_range_from_sheet(settings_sheet_id, settings_range)
+
+    value_dict = {x[0]: x[1] for x in resp}
+    save_json(value_dict, config_file_loc)
+    load_data_from_json(config_file_loc)
+
+
+def sync_analytics():
+    values: [[]] = [
+        ['version', str(version)],
+        ['last_active_time', datetime_str(last_active_time)],
+        ['total_hours_online', "NA"],
+        ['total_tweets_sent', "NA"],
+        ['operation_timezone', "IST"],
+        ['last_tweet_row_index', last_tweet_row_index],
+        ['last_tweet_time', datetime_str(last_tweet_time)],
+    ]
+
+    value_dict = {x[0]: x[1] for x in values}
+    save_json(value_dict, analytics_file_loc)
+
+    body = {'values': values}
+    resp = gsheet.set_range_of_sheet(settings_sheet_id, analytics_range, body)
+    return resp

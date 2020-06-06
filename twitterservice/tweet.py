@@ -1,18 +1,20 @@
 import tweepy
-import config
 
-def init():
+api = None
+
+
+def init(twitter_auth_data):
+    global api
     # Authenticate to Twitter
-    auth = tweepy.OAuthHandler(config.ConsumerAPIkey,
-                            config.ConsumerAPIsecretKey)
-    auth.set_access_token(config.AccessToken,
-                        config.AccessTokenSecret)
+    auth = tweepy.OAuthHandler(twitter_auth_data["consumerAPIkey"],
+                               twitter_auth_data["consumerAPIsecretKey"])
+    auth.set_access_token(twitter_auth_data["accessToken"],
+                          twitter_auth_data["accessTokenSecret"])
 
     # Create API object
-    return tweepy.API(auth, wait_on_rate_limit=True,
-                    wait_on_rate_limit_notify=True)
+    api = tweepy.API(auth, wait_on_rate_limit=True,
+                     wait_on_rate_limit_notify=True)
 
-api = init()
 
 def check_twitter_auth():
     print("Authenticating to twitter")
@@ -21,6 +23,7 @@ def check_twitter_auth():
         print("Authentication OK")
     except:
         print("Error during authentication")
+
 
 def post_simple_tweet(tweet: str):
     # Create a tweet
@@ -56,4 +59,3 @@ def upload_media(file_path):
 
 # Delete Tweet
 # api.destroy_status()
-
