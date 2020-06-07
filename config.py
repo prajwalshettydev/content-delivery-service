@@ -37,8 +37,8 @@ tick_frequency: timedelta = timedelta(seconds=10, minutes=0, hours=0)
 time_between_tweets: timedelta = timedelta(days=0, hours=12)
 
 if not debug_mode:
-    sys.stderr = open(os.path.join(log_loc, 'log_err.txt'), 'w', 1)
-    sys.stdout = open(os.path.join(log_loc, 'log_out.txt'), 'w', 1)
+    sys.stderr = open(os.path.join(log_loc, 'log_err.txt'), 'w', 1, encoding="utf-8")
+    sys.stdout = open(os.path.join(log_loc, 'log_out.txt'), 'w', 1, encoding="utf-8")
 
 
 def datetime_str(date_time: datetime):
@@ -95,7 +95,7 @@ def init():
 
 
 def sync():
-    print("\nSyncing Service Config with cloud..")
+    print("Syncing Service Config with cloud..")
     global last_active_time
     last_active_time = datetime.now()
     sync_analytics()

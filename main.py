@@ -15,7 +15,6 @@ def tick():
         print("Next tweet will trigger after: " +
               str(next_scheduled_tweet_time - config.datetime.now()))
 
-
     config.sync()
 
 
@@ -25,25 +24,28 @@ def do_next_scheduled_tweet():
     # +1 to increment to the next row
     current_row = initial_row = (config.last_tweet_row_index) + 1
 
-    main_tweet_data = gsheet.get_particular_row_from_sheet(config.content_sheet_id,current_row)
+    main_tweet_data = gsheet.get_particular_row_from_sheet(
+        config.content_sheet_id, current_row)
 
     if not main_tweet_data[0]:
         print("Starving of content, nothing to tweet for now. please add something at row: "+str(current_row))
         return
 
     last_tweet_id = tweet_tweet(main_tweet_data)
+    config.last_tweet_time = config.datetime.now()
+    config.last_tweet_row_index = current_row
     print("Tweeted from row: " + str(current_row))
 
     if main_tweet_data[1] and int(main_tweet_data[1].get('numberValue')) > 0:
         while current_row < initial_row + int(main_tweet_data[1].get('numberValue')):
             current_row += 1
-            subtweet_data = gsheet.get_particular_row_from_sheet(current_row)
+            subtweet_data = gsheet.get_particular_row_from_sheet(
+                config.content_sheet_id, current_row)
             last_tweet_id = tweet_tweet(
                 subtweet_data, parent_tweet_id=last_tweet_id)
             print("Sub-Tweeted from row: " + str(current_row))
-
-    config.last_tweet_time = config.datetime.now()
-    config.last_tweet_row_index = current_row
+            config.last_tweet_time = config.datetime.now()
+            config.last_tweet_row_index = current_row
 
 
 def upload_media(cell_data):
@@ -76,7 +78,7 @@ def tweet_tweet(tweet_data, parent_tweet_id=''):
         media_id = upload_media(tweet_data[5])
         media_ids.append(media_id)
 
-    print("Tweeting: " + str(tweet_data[0].get('stringValue')))
+    print("Tweeting: " + str(tweet_data[0].get('stringValue').encode()))
     tweet_id = tweet.tweet_to_twitter(str(tweet_data[0].get('stringValue')),
                                       media_ids,
                                       str(tweet_data[6].get(
